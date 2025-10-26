@@ -1,14 +1,13 @@
-# Dependencies and build artifacts in any folder
+# Dependencies in any folder
 **/node_modules
+
+# Build output folders
 **/dist
 **/build
 
 # Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # Log files
 npm-debug.log*
