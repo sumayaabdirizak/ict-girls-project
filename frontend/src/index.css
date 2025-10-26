@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+@keyframes progress {
+  0% { width: 100%; }
+  100% { width: 0%; }
+}
+.animate-progress {
+  animation: progress 5s linear forwards;
+}
+
+/* Add smooth transitions for sidebar */
+.sidebar-content {
+  transition: margin-left 0.3s ease;
+}
+
+/* When sidebar is expanded */
+.sidebar:not(.w-20) + .sidebar-content {
+  margin-left: 20rem; /* 320px */
+}
+
+/* When sidebar is collapsed */
+.sidebar.w-20 + .sidebar-content {
+  margin-left: 5rem; /* 80px */
+}
+
+/* Hover effects for collapsed sidebar */
+.sidebar.w-20:hover {
+  width: 20rem;
+}
+
+.sidebar.w-20:hover .logoWrapper {
+  opacity: 1;
+}
+
+.sidebar.w-20:hover .sidebarTabs span {
+  max-width: 100%;
+  opacity: 1;
+  margin-right: 0.75rem;
+}
