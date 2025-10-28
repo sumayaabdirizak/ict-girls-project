@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -7,6 +6,7 @@ import Footer from './components/layout/Footer';
 import Landing from './pages/public/Landing';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
+import BlogPage from './pages/public/BlogPage'; // Import BlogPage
 import Community from './pages/community/Community';
 import Dashboard from './pages/dashboard/Dashboard';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -52,12 +52,13 @@ function App() {
             } />
           </Routes>
           
-          <main>
+          <main className="pt-16">
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Landing />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/blog" element={<BlogPage />} /> {/* Blog Route */}
               <Route path="/admin-login" element={<AdminLogin />} />
               
               {/* Protected User Routes */}

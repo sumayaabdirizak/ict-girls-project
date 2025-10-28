@@ -1,236 +1,197 @@
+/**
+ * @overview Community Chat Page
+ * @description This component manages the main chat interface, including channel list, messages, and WebSocket communication.
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { useWebSocket } from '../../hooks/useWebSocket';
+
+// Import child components
 import CommunitySidebar from '../../components/community/CommunitySidebar';
 import ChannelHeader from '../../components/community/ChannelHeader';
 import MessageList from '../../components/community/MessageList';
 import MessageInput from '../../components/community/MessageInput';
-import MembersSidebar from '../../components/community/MembersSidebar';
+
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
 
 const Community = () => {
-  const { user } = useAuth();
-  const [activeChannel, setActiveChannel] = useState('general-chat');
-  const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingUser, setTypingUser] = useState('');
-  const messagesEndRef = useRef(null);
+  const { user, isAuthenticated, getWebSocketUrl } = useAuth();
+  const [channels, setChannels] = useState([]);
+  const [activeChannel, setActiveChannel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [webSocketMessages, setWebSocketMessages] = useState([]);
   
-  const [channels] = useState([
-    { 
-      id: 'courses-help', 
-      name: 'courses-help', 
-      displayName: 'Courses Help',
-      icon: '📚', 
-      unread: 3,
-      description: 'Get help with your courses and assignments'
-    },
-    { 
-      id: 'project-teams', 
-      name: 'project-teams', 
-      displayName: 'Project Teams',
-      icon: '👥', 
-      unread: 0,
-      description: 'Collaborate on projects and find team members'
-    },
-    { 
-      id: 'internships-jobs', 
-      name: 'internships-jobs', 
-      displayName: 'Internships & Jobs',
-      icon: '💼', 
-      unread: 5,
-      description: 'Share internship and job opportunities'
-    },
-    { 
-      id: 'study-groups', 
-      name: 'study-groups', 
-      displayName: 'Study Groups',
-      icon: '🔬', 
-      unread: 2,
-      description: 'Find and organize study groups'
-    },
-    { 
-      id: 'general-chat', 
-      name: 'general-chat', 
-      displayName: 'General Chat',
-      icon: '💬', 
-      unread: 0,
-      description: 'General discussions and community chat'
+  const messagesEndRef = useRef(null);
+  const previousChannelRef = useRef(null);
+
+  // Get authenticated WebSocket URL
+  const webSocketUrl = getWebSocketUrl();
+  
+  // Use your custom WebSocket hook
+  const { messages: rawMessages, sendMessage, isConnected, clearMessages } = useWebSocket(webSocketUrl);
+
+  // Process WebSocket messages
+  useEffect(() => {
+    if (rawMessages.length > 0) {
+      const latestMessage = rawMessages[rawMessages.length - 1];
+      console.log('📨 Processing WebSocket message:', latestMessage);
+
+      switch (latestMessage.type) {
+        case 'MESSAGE_HISTORY':
+          setWebSocketMessages(latestMessage.payload || []);
+          setLoading(false);
+          break;
+        case 'NEW_MESSAGE':
+          if (latestMessage.payload?.category_id === activeChannel?.id) {
+            setWebSocketMessages(prev => [...prev, latestMessage.payload]);
+          }
+          break;
+        case 'ERROR':
+          console.error('WebSocket Error:', latestMessage.payload?.message);
+          if (latestMessage.payload?.message?.includes('authentication') || latestMessage.payload?.message?.includes('token')) {
+            console.error('Authentication error - consider logging out');
+          }
+          break;
+        default:
+          console.log('Unknown message type:', latestMessage.type);
+      }
     }
-  ]);
+  }, [rawMessages, activeChannel]);
 
-  const [onlineUsers] = useState([
-    { id: 1, name: 'Salma Adam', status: 'online', major: 'Computer Science', avatar: 'SA' },
-    { id: 2, name: 'Aisha Mohamed', status: 'online', major: 'Information Technology', avatar: 'AM' },
-    { id: 3, name: 'Fatima Hassan', status: 'away', major: 'Software Engineering', avatar: 'FH' },
-    { id: 4, name: 'Khadija Ali', status: 'online', major: 'Cybersecurity', avatar: 'KA' },
-    { id: 5, name: 'Mariam Omar', status: 'busy', major: 'Data Science', avatar: 'MO' }
-  ]);
-
-  const [studyGroups] = useState([
-    { id: 1, name: 'Web Dev Study Group', members: 8, topic: 'React & Node.js', nextSession: 'Tomorrow 3 PM' },
-    { id: 2, name: 'Database Study Group', members: 5, topic: 'SQL & MongoDB', nextSession: 'Friday 2 PM' },
-    { id: 3, name: 'AI/ML Study Group', members: 12, topic: 'Python & TensorFlow', nextSession: 'Today 6 PM' }
-  ]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Fetch channels on component mount
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    const channelMessages = {
-      'general-chat': [
-        { 
-          id: 1, 
-          user: 'Salma Adam', 
-          message: 'Welcome to our ICT Girls community! 🎉 This is the perfect place to connect with fellow students and grow together.', 
-          time: '8:27 PM', 
-          date: 'Today',
-          reactions: { '👍': 3, '❤️': 2 },
-          avatar: 'SA'
-        },
-        { 
-          id: 2, 
-          user: 'Aisha Mohamed', 
-          message: 'Has anyone started the Web Development project? I need some help with React components and state management.', 
-          time: '8:45 PM', 
-          date: 'Today',
-          reactions: { '👀': 1 },
-          avatar: 'AM'
+    const fetchChannels = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/categories`);
+        setChannels(response.data);
+        if (response.data.length > 0 && !activeChannel) {
+          setActiveChannel(response.data[0]);
         }
-      ],
-      'courses-help': [
-        { 
-          id: 1, 
-          user: 'Khadija Ali', 
-          message: 'Can someone help me with database normalization? I\'m stuck on 3NF.', 
-          time: '2:30 PM', 
-          date: 'Today',
-          reactions: {},
-          avatar: 'KA'
-        }
-      ],
-      'internships-jobs': [
-        { 
-          id: 1, 
-          user: 'Fatima Hassan', 
-          message: 'There\'s a great internship opportunity at TechCorp for 3rd year students! They\'re looking for frontend developers with React experience.', 
-          time: '9:15 AM', 
-          date: 'Today',
-          reactions: { '👍': 5, '💼': 2 },
-          avatar: 'FH'
-        }
-      ]
+      } catch (error) { 
+        console.error("Failed to fetch channels:", error); 
+      } finally {
+        setLoading(false);
+      }
     };
+    
+    if (isAuthenticated()) {
+      fetchChannels();
+    }
+  }, [isAuthenticated]);
 
-    setMessages(channelMessages[activeChannel] || []);
-  }, [activeChannel]);
+  // Fetch message history when active channel changes
+  useEffect(() => {
+    if (activeChannel && isConnected) {
+      setLoading(true);
+      
+      // Clear messages when switching channels
+      if (previousChannelRef.current !== activeChannel.id) {
+        setWebSocketMessages([]);
+        previousChannelRef.current = activeChannel.id;
+      }
+
+      const message = {
+        type: 'FETCH_HISTORY',
+        payload: { 
+          category_id: activeChannel.id
+        }
+      };
+      console.log('📤 Requesting message history for channel:', activeChannel.id);
+      sendMessage(message);
+    }
+  }, [activeChannel, isConnected, sendMessage]);
 
   const handleSendMessage = (messageText) => {
-    const newMessage = {
-      id: Date.now(),
-      user: user?.full_name || 'You',
-      message: messageText,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: 'Today',
-      reactions: {},
-      avatar: user?.full_name?.split(' ').map(n => n[0]).join('') || 'Y',
-      isCurrentUser: true
-    };
-    setMessages([...messages, newMessage]);
-    simulateTyping();
-  };
+    if (!isConnected) {
+      alert("Connection is not open. Please wait...");
+      return;
+    }
 
-  const simulateTyping = () => {
-    const typingUsers = onlineUsers.filter(u => u.status === 'online' && u.name !== user?.full_name);
-    if (typingUsers.length > 0) {
-      const randomUser = typingUsers[Math.floor(Math.random() * typingUsers.length)];
-      setIsTyping(true);
-      setTypingUser(randomUser.name);
-      
-      setTimeout(() => {
-        setIsTyping(false);
-        setTypingUser('');
-      }, 2000);
+    if (!messageText.trim()) {
+      alert("Message cannot be empty");
+      return;
+    }
+
+    const message = {
+      type: 'SEND_MESSAGE',
+      payload: {
+        content: messageText.trim(),
+        category_id: activeChannel?.id 
+      }
+    };
+    console.log('📦 Sending message to server:', message.payload);
+    const success = sendMessage(message);
+    
+    if (!success) {
+      alert('Failed to send message. Please check your connection.');
     }
   };
+  
+  // Auto-scroll to bottom when messages update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [webSocketMessages]);
 
-  const handleChannelChange = (channelId) => {
-    setActiveChannel(channelId);
-    setIsTyping(false);
-    setTypingUser('');
+  // Show connection status
+  const getConnectionStatusText = () => {
+    if (!isAuthenticated()) return '🔐 Please log in';
+    if (!isConnected) return '🔴 Connecting...';
+    return '🟢 Connected';
   };
 
-  const getCurrentChannel = () => {
-    return channels.find(channel => channel.id === activeChannel) || channels[0];
-  };
+  if (!isAuthenticated()) {
+    return (
+      <div className="pt-16 flex items-center justify-center h-screen bg-primary-50">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+          <p>Please log in to access the community chat.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !activeChannel) {
+    return (
+      <div className="pt-16 flex items-center justify-center h-screen bg-primary-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>Loading Community...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16"> {/* pt-16 for header spacing */}
-      <div className="h-[calc(100vh-4rem)]"> {/* Adjust height for header */}
-        <div className="flex h-full bg-white border border-gray-200">
-          
-          {/* Left Sidebar */}
-          <CommunitySidebar
-            channels={channels}
-            activeChannel={activeChannel}
-            onChannelChange={handleChannelChange}
-            onlineUsers={onlineUsers}
+    <div className="pt-16 bg-primary-50">
+      <div className="flex h-[calc(100vh-4rem)] font-sans">
+        <CommunitySidebar
+          channels={channels}
+          activeChannel={activeChannel}
+          onChannelChange={setActiveChannel}
+          connectionStatus={getConnectionStatusText()}
+        />
+        <div className="flex-1 flex flex-col min-w-0 bg-white">
+          <ChannelHeader 
+            channel={activeChannel} 
+            connectionStatus={getConnectionStatusText()}
           />
-
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Channel Header */}
-            <ChannelHeader 
-              channel={getCurrentChannel()} 
-              onlineCount={onlineUsers.filter(u => u.status === 'online').length}
-            />
-
-            <div className="flex-1 flex overflow-hidden">
-              
-              {/* Messages Area */}
-              <div className="flex-1 flex flex-col min-w-0">
-             
-
-                {/* Messages Container */}
-                <div className="flex-1 overflow-y-auto bg-gray-50">
-                  <div className="min-h-full">
-                    <MessageList messages={messages} currentUser={user?.full_name} />
-                    
-                    {/* Typing Indicator */}
-                    {isTyping && (
-                      <div className="px-4 py-2">
-                        <div className="flex items-center space-x-2 text-gray-500 text-sm">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                          </div>
-                          <span>{typingUser} is typing...</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div ref={messagesEndRef} />
-                  </div>
-                </div>
-
-                {/* Message Input */}
-                <MessageInput 
-                  onSendMessage={handleSendMessage} 
-                  channel={getCurrentChannel().name}
-                />
+          <div className="flex-1 overflow-y-auto p-4">
+            {loading ? (
+              <div className="text-center text-gray-500">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                Loading messages...
               </div>
-
-              {/* Right Sidebar */}
-              <MembersSidebar 
-                onlineUsers={onlineUsers}
-                studyGroups={studyGroups}
-              />
-            </div>
+            ) : (
+              <MessageList messages={webSocketMessages} />
+            )}
+            <div ref={messagesEndRef} />
           </div>
+          <MessageInput 
+            onSendMessage={handleSendMessage}
+            disabled={!isConnected || loading}
+          />
         </div>
       </div>
     </div>

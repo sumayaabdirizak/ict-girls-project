@@ -47,6 +47,12 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                 </Link>
               )}
               <Link 
+                to="/blog" 
+                className="text-gray-800 hover:text-[#4da6ff] px-4 py-3 rounded-md text-base font-semibold transition-colors duration-200"
+              >
+                Blog
+              </Link>
+              <Link 
                 to="/about" 
                 className="text-gray-800 hover:text-[#4da6ff] px-4 py-3 rounded-md text-base font-semibold transition-colors duration-200"
               >
