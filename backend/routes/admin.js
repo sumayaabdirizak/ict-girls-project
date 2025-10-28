@@ -1,8 +1,21 @@
-// routes/admin.js - SIMPLE WORKING VERSION
-const express = require('express');
+/**
+ * @overview Admin API Routes
+ * @description This file defines the API routes for administrative actions, such as a test route and a simple login for testing purposes.
+ * It uses the modern ES Module syntax (`import`/`export`).
+ *
+ * @author sumayaabdirizak
+ * @created 2025-10-26
+ */
+
+// 1. Converted 'require' to 'import'
+import express from 'express';
+
+// This line was already correct
 const router = express.Router();
 
-// Test route
+// --- Routes ---
+
+// A simple test route to confirm the admin routes are correctly loaded.
 router.get('/test', (req, res) => {
     res.json({ 
         message: '✅ Admin routes are working!',
@@ -10,28 +23,31 @@ router.get('/test', (req, res) => {
     });
 });
 
-// Simple login route
+// A simple, hardcoded login route for administrative testing.
+// NOTE: In a production environment, this should be replaced with a proper authentication mechanism that checks against a database.
 router.post('/login', (req, res) => {
     try {
         const { email, password } = req.body;
         
         console.log('🔐 Admin login attempt:', email);
         
-        // Simple hardcoded authentication for testing
+        // --- WARNING: Hardcoded credentials for testing only ---
         if (email === 'admin@jazeerauniversity.edu' && password === 'admin123') {
-            const token = 'admin-jwt-token-' + Date.now();
+            // In a real app, you would use a library like 'jsonwebtoken' to create a real JWT.
+            const token = 'fake-admin-jwt-token-' + Date.now();
             
             return res.json({
                 message: 'Admin login successful',
                 token,
                 admin: {
-                    id: 1,
+                    id: 'admin_01',
                     email: email,
                     full_name: 'System Administrator'
                 }
             });
         }
         
+        // If credentials do not match, send an "Unauthorized" status.
         return res.status(401).json({ error: 'Invalid credentials' });
         
     } catch (error) {
@@ -40,4 +56,5 @@ router.post('/login', (req, res) => {
     }
 });
 
-module.exports = router;
+// 3. Converted 'module.exports' to 'export default'
+export default router;

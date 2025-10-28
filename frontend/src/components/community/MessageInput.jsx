@@ -1,56 +1,59 @@
+/**
+ * @overview MessageInput Component
+ * @description This component renders a form with a single text input for users to type and send chat messages.
+ * It is a "controlled component," meaning its internal state is managed by React.
+ *
+ * @author sumayaabdirizak
+ * @created 2025-10-26
+ */
+
 import React, { useState } from 'react';
 
-const MessageInput = ({ onSendMessage, channel }) => {
-  const [message, setMessage] = useState('');
+/**
+ * A controlled input component for sending messages.
+ * @param {object} props - The component's props.
+ * @param {function(string): void} props.onSendMessage - A callback function that is invoked with the message text when the user submits the form.
+ */
+const MessageInput = ({ onSendMessage }) => {
+  // `useState` hook to manage the text inside the input field.
+  // The `text` variable holds the current value, and `setText` is the function to update it.
+  const [text, setText] = useState('');
 
+  /**
+   * Handles the form submission event.
+   * @param {React.FormEvent<HTMLFormElement>} e - The form submission event.
+   */
   const handleSubmit = (e) => {
+    // Prevent the default browser behavior of reloading the page on form submission.
     e.preventDefault();
-    if (!message.trim()) return;
 
-    onSendMessage(message);
-    setMessage('');
-  };
+    // Check if the input text is not just empty spaces before sending.
+    if (text.trim()) {
+      // Call the `onSendMessage` function passed down from the parent component,
+      // sending the current text value as the message.
+      onSendMessage(text);
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+      // Reset the input field to be empty after the message has been sent.
+      setText('');
     }
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4">
-      <form onSubmit={handleSubmit} className="flex space-x-4">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={`Message #${channel}`}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
-          />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex space-x-2">
-            <button type="button" className="text-gray-400 hover:text-gray-600">
-              😊
-            </button>
-            <button type="button" className="text-gray-400 hover:text-gray-600">
-              📎
-            </button>
-          </div>
-        </div>
-        <button
-          type="submit"
-          disabled={!message.trim()}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Send
-        </button>
+    // A container div for styling and layout.
+    <div className="p-4 bg-white border-t border-gray-200">
+      {/* The form element that triggers the `handleSubmit` function on submission. */}
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          // The value of the input is directly controlled by the `text` state variable.
+          value={text}
+          // The `onChange` event fires on every keystroke, updating the `text` state.
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type your message..."
+          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-jazeera-gold"
+          autoComplete="off" // Good practice for chat inputs to prevent suggestions.
+        />
       </form>
-      
-      <div className="mt-2 text-xs text-gray-500">
-        Press Enter to send • Shift+Enter for new line
-      </div>
     </div>
   );
 };

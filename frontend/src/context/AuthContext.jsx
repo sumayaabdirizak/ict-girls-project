@@ -40,6 +40,23 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     cleanupInvalidStorage();
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (savedToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+      
+      // Restore user data if available
+      if (savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch (error) {
+          console.error('Error parsing saved user data:', error);
+          localStorage.removeItem('user');
+        }
+      }
+      console.log('🔑 Restored token from localStorage');
+    }
     setLoading(false);
   }, []);
 
@@ -49,11 +66,13 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
+    console.log('🔐 Storing user token');
+
     const userWithAdmin = {
       ...userData,
       isAdmin: userData.isAdmin || false
     };
-    
+
     setUser(userWithAdmin);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userWithAdmin));
@@ -63,57 +82,49 @@ export const AuthProvider = ({ children }) => {
   const adminLogin = async (email, password) => {
     try {
       console.log('Attempting admin login with:', { email });
-      
+
       const response = await axios.post('http://localhost:5000/api/admin/login', { 
         email, 
         password 
       });
-      
+
       console.log('Admin login response:', response.data);
-      
-      // Handle different response formats
+
       let adminUser, token;
-      
+
       if (response.data.user && response.data.token) {
-        // Format 1: { user: {...}, token: '...' }
         adminUser = response.data.user;
         token = response.data.token;
       } else if (response.data.admin && response.data.token) {
-        // Format 2: { admin: {...}, token: '...' }
         adminUser = response.data.admin;
         token = response.data.token;
       } else if (response.data.data) {
-        // Format 3: { data: { user: {...}, token: '...' } }
         adminUser = response.data.data.user || response.data.data.admin;
         token = response.data.data.token;
       } else {
-        // Format 4: Direct properties
         adminUser = response.data;
         token = response.data.token;
       }
-      
+
       if (adminUser && token) {
-        // Ensure admin user has role
         const adminWithRole = {
           ...adminUser,
           role: 'admin'
         };
-        
+
         localStorage.setItem('adminToken', token);
         localStorage.setItem('admin', JSON.stringify(adminWithRole));
         setAdmin(adminWithRole);
-        
+
         console.log('Admin login successful:', adminWithRole);
         return response.data;
       } else {
         console.error('Invalid response structure:', response.data);
         throw new Error('Invalid response from server: Missing user or token');
       }
-      
     } catch (error) {
       console.error('Admin login error:', error);
-      
-      // Provide more detailed error information
+
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
@@ -123,7 +134,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         console.error('Error message:', error.message);
       }
-      
+
       localStorage.removeItem('adminToken');
       localStorage.removeItem('admin');
       throw error;
@@ -157,6 +168,18 @@ export const AuthProvider = ({ children }) => {
     return user !== null || admin !== null;
   };
 
+  // Get WebSocket authentication token
+  const getWebSocketToken = () => {
+    return localStorage.getItem('token') || localStorage.getItem('adminToken');
+  };
+
+  // Get authenticated WebSocket URL
+  const getWebSocketUrl = () => {
+    const token = getWebSocketToken();
+    const baseUrl = import.meta.env?.VITE_WS_URL || 'ws://localhost:5000';
+    return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : null;
+  };
+
   const adminApi = axios.create({
     baseURL: 'http://localhost:5000/api/admin'
   });
@@ -183,16 +206,19 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     admin,
+    token: getWebSocketToken(),
     login,
     logout,
     adminLogin,
     adminLogout,
     fullLogout,
     loading,
-    isAuthenticated: isAuthenticated(),
-    isAdmin: isAdmin(),
+    isAuthenticated,
+    isAdmin,
     adminApi,
-    cleanupInvalidStorage
+    cleanupInvalidStorage,
+    getWebSocketToken,
+    getWebSocketUrl
   };
 
   return (
